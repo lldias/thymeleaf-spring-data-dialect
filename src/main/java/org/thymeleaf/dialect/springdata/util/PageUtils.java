@@ -9,13 +9,7 @@ import static org.thymeleaf.dialect.springdata.util.Strings.Q_MARK;
 import static org.thymeleaf.dialect.springdata.util.Strings.SIZE;
 import static org.thymeleaf.dialect.springdata.util.Strings.SORT;
 
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Enumeration;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -84,11 +78,13 @@ public final class PageUtils {
     }
 
     public static String createPageUrl(final ITemplateContext context, int pageNumber) {
-        final String prefix = getParamPrefix(context);
-        final Collection<String> excludedParams = Arrays.asList(new String[] { prefix.concat(PAGE) });
-        final String baseUrl = buildBaseUrl(context, excludedParams);
+        final String baseUrl = buildBaseUrl(context);
 
-        return buildUrl(baseUrl, context).append(PAGE).append(EQ).append(pageNumber).toString();
+        final String prefix = getParamPrefix(context);
+        final Page<?> page = findPage(context);
+        String parameters = SDParameters.from(prefix, page.getPageable()).forPaginationPage();
+
+        return buildUrl(baseUrl + Strings.Q_MARK + parameters, context).append(prefix + PAGE).append(EQ).append(pageNumber).toString();
     }
 
     /**
@@ -101,13 +97,13 @@ public final class PageUtils {
      */
     public static String createSortUrl(final ITemplateContext context, final String fieldName, final Direction forcedDir) {
         // Params can be prefixed to manage multiple pagination on the same page
+        final String baseUrl = buildBaseUrl(context);
+
         final String prefix = getParamPrefix(context);
-        final Collection<String> excludedParams = Arrays
-                .asList(new String[] { prefix.concat(SORT), prefix.concat(PAGE) });
-        final String baseUrl = buildBaseUrl(context, excludedParams);
+        final Page<?> page = findPage(context);
+        String parameters = SDParameters.from(prefix, page.getPageable()).forPaginationSort();
 
         final StringBuilder sortParam = new StringBuilder();
-        final Page<?> page = findPage(context);
         final Sort sort = page.getSort();
         final boolean hasPreviousOrder = sort != null && sort.getOrderFor(fieldName) != null;
         if (forcedDir != null) {
@@ -121,17 +117,18 @@ public final class PageUtils {
             sortParam.append(fieldName);
         }
 
-        return buildUrl(baseUrl, context).append(SORT).append(EQ).append(sortParam).toString();
+        return buildUrl(baseUrl + Strings.Q_MARK + parameters, context).append(prefix + SORT).append(EQ).append(sortParam).toString();
     }
 
     public static String createPageSizeUrl(final ITemplateContext context, int pageSize) {
-        final String prefix = getParamPrefix(context);
-        // Reset page number to avoid empty lists
-        final Collection<String> excludedParams = Arrays
-                .asList(new String[] { prefix.concat(SIZE), prefix.concat(PAGE) });
-        final String baseUrl = buildBaseUrl(context, excludedParams);
 
-        return buildUrl(baseUrl, context).append(SIZE).append(EQ).append(pageSize).toString();
+        final String prefix = getParamPrefix(context);
+        final Page<?> page = findPage(context);
+        String parameters = SDParameters.from(prefix, page.getPageable()).forPaginationSize();
+
+        final String baseUrl = buildBaseUrl(context);
+
+        return buildUrl(baseUrl + Strings.Q_MARK + parameters, context).append(prefix + SIZE).append(EQ).append(pageSize).toString();
     }
 
     public static int getFirstItemInPage(final Page<?> page) {
@@ -154,11 +151,11 @@ public final class PageUtils {
     		return page.getTotalPages()>0 && page.hasPrevious();
     }
 
-    private static String buildBaseUrl(final ITemplateContext context, Collection<String> excludeParams) {
+    private static String buildBaseUrl(final ITemplateContext context) {
         // URL defined with pagination-url tag
-        final String url = (String) context.getVariable(Keys.PAGINATION_URL_KEY);
+        final String sdUrl = (String) context.getVariable(Keys.PAGINATION_URL_KEY);
 
-        if (url == null && context instanceof IWebContext) {
+        if (sdUrl == null && context instanceof IWebContext) {
             // Creates url from actual request URI and parameters
             final StringBuilder builder = new StringBuilder();
             final IWebContext webContext = (IWebContext) context;
@@ -167,40 +164,44 @@ public final class PageUtils {
             // URL base path from request
             builder.append(request.getRequestURI());
 
-            Map<String, String[]> params = request.getParameterMap();
-            Set<Entry<String, String[]>> entries = params.entrySet();
-            boolean firstParam = true;
-            for (Entry<String, String[]> param : entries) {
-                // Append params not excluded to basePath
-                String name = param.getKey();
-                if (!excludeParams.contains(name)) {
-                    if (firstParam) {
-                        builder.append(Q_MARK);
-                        firstParam = false;
-                    } else {
-                        builder.append(AND);
-                    }
-
-                    // Iterate over all values to create multiple values per
-                    // parameter
-                    String[] values = param.getValue();
-                    Collection<String> paramValues = Arrays.asList(values);
-                    Iterator<String> it = paramValues.iterator();
-                    while (it.hasNext()) {
-                        String value = it.next();
-                        builder.append(name).append(EQ).append(value);
-                        if (it.hasNext()) {
-                            builder.append(AND);
-                        }
-                    }
-                }
-            }
+        	// return without parameters
+//            Map<String, String[]> params = request.getParameterMap();
+//            Set<Entry<String, String[]>> entries = params.entrySet();
+//            boolean firstParam = true;
+//            for (Entry<String, String[]> param : entries) {
+//                // Append params not excluded to basePath
+//                String name = param.getKey();
+//                if (!excludeParams.contains(name)) {
+//                    if (firstParam) {
+//                        builder.append(Q_MARK);
+//                        firstParam = false;
+//                    } else {
+//                        builder.append(AND);
+//                    }
+//
+//                    // Iterate over all values to create multiple values per
+//                    // parameter
+//                    String[] values = param.getValue();
+//                    Collection<String> paramValues = Arrays.asList(values);
+//                    Iterator<String> it = paramValues.iterator();
+//                    while (it.hasNext()) {
+//                        String value = it.next();
+//                        builder.append(name).append(EQ).append(value);
+//                        if (it.hasNext()) {
+//                            builder.append(AND);
+//                        }
+//                    }
+//                }
+//            }
 
             // Escape to HTML content
             return HtmlEscape.escapeHtml4Xml(builder.toString());
+        } else if (sdUrl != null) {
+        	// return without parameters
+        	return HtmlEscape.escapeHtml4Xml(sdUrl.split("\\?")[0]);
         }
 
-        return url == null ? EMPTY : url;
+        return sdUrl == null ? EMPTY : sdUrl;
     }
 
     private static boolean isPageInstance(Object page) {
