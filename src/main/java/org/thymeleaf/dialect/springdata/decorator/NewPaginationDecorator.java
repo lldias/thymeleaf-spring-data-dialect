@@ -34,6 +34,9 @@ public class NewPaginationDecorator implements PaginationDecorator {
         Object paramValue = context.getVariable(Keys.PAGINATION_SPLIT_KEY);
         if (paramValue != null) {
             pageSplit = (Integer) paramValue;
+            if (pageSplit < DEFAULT_PAGE_SPLIT) {
+            	pageSplit = DEFAULT_PAGE_SPLIT;
+            }
         }
 
         List<String> pagesLink = criarPaginacaoPara(pageNumber, totalPages, pageSplit);
