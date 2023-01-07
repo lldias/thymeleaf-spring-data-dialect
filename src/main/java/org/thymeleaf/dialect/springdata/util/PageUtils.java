@@ -4,10 +4,7 @@ import static org.thymeleaf.dialect.springdata.util.Strings.AND;
 import static org.thymeleaf.dialect.springdata.util.Strings.COMMA;
 import static org.thymeleaf.dialect.springdata.util.Strings.EMPTY;
 import static org.thymeleaf.dialect.springdata.util.Strings.EQ;
-import static org.thymeleaf.dialect.springdata.util.Strings.PAGE;
 import static org.thymeleaf.dialect.springdata.util.Strings.Q_MARK;
-import static org.thymeleaf.dialect.springdata.util.Strings.SIZE;
-import static org.thymeleaf.dialect.springdata.util.Strings.SORT;
 
 import java.util.Enumeration;
 
@@ -29,7 +26,7 @@ import org.unbescape.html.HtmlEscape;
 
 @SuppressWarnings("unchecked")
 public final class PageUtils {
-
+	
     private PageUtils() {
     }
 
@@ -82,9 +79,19 @@ public final class PageUtils {
 
         final String prefix = getParamPrefix(context);
         final Page<?> page = findPage(context);
-        String parameters = SDParameters.from(prefix, page.getPageable()).forPaginationPage();
+        String parameters = Parameters.from(prefix, page.getPageable(), PageUtils.getFilterValue(context)).forPaginationPage();
 
-        return buildUrl(baseUrl + Strings.Q_MARK + parameters, context).append(prefix + PAGE).append(EQ).append(pageNumber).toString();
+        return buildUrl(baseUrl + Strings.Q_MARK + parameters, context).append(Parameters.PAGE).append(EQ).append(pageNumber).toString();
+    }
+
+    public static String createFilterUrl(final ITemplateContext context) {
+        final String baseUrl = buildBaseUrl(context);
+
+        final String prefix = getParamPrefix(context);
+        final Page<?> page = findPage(context);
+        String parameters = Parameters.from(prefix, page.getPageable(), PageUtils.getFilterValue(context)).forFilter();
+
+        return baseUrl + Strings.Q_MARK + parameters;
     }
 
     /**
@@ -101,7 +108,7 @@ public final class PageUtils {
 
         final String prefix = getParamPrefix(context);
         final Page<?> page = findPage(context);
-        String parameters = SDParameters.from(prefix, page.getPageable()).forPaginationSort();
+        String parameters = Parameters.from(prefix, page.getPageable(), PageUtils.getFilterValue(context)).forPaginationSort();
 
         final StringBuilder sortParam = new StringBuilder();
         final Sort sort = page.getSort();
@@ -117,18 +124,18 @@ public final class PageUtils {
             sortParam.append(fieldName);
         }
 
-        return buildUrl(baseUrl + Strings.Q_MARK + parameters, context).append(prefix + SORT).append(EQ).append(sortParam).toString();
+        return buildUrl(baseUrl + Strings.Q_MARK + parameters, context).append(Parameters.SORT).append(EQ).append(sortParam).toString();
     }
 
     public static String createPageSizeUrl(final ITemplateContext context, int pageSize) {
 
         final String prefix = getParamPrefix(context);
         final Page<?> page = findPage(context);
-        String parameters = SDParameters.from(prefix, page.getPageable()).forPaginationSize();
+        String parameters = Parameters.from(prefix, page.getPageable(), PageUtils.getFilterValue(context)).forPaginationSize();
 
         final String baseUrl = buildBaseUrl(context);
 
-        return buildUrl(baseUrl + Strings.Q_MARK + parameters, context).append(prefix + SIZE).append(EQ).append(pageSize).toString();
+        return buildUrl(baseUrl + Strings.Q_MARK + parameters, context).append(Parameters.SIZE).append(EQ).append(pageSize).toString();
     }
 
     public static int getFirstItemInPage(final Page<?> page) {
@@ -164,36 +171,6 @@ public final class PageUtils {
             // URL base path from request
             builder.append(request.getRequestURI());
 
-        	// return without parameters
-//            Map<String, String[]> params = request.getParameterMap();
-//            Set<Entry<String, String[]>> entries = params.entrySet();
-//            boolean firstParam = true;
-//            for (Entry<String, String[]> param : entries) {
-//                // Append params not excluded to basePath
-//                String name = param.getKey();
-//                if (!excludeParams.contains(name)) {
-//                    if (firstParam) {
-//                        builder.append(Q_MARK);
-//                        firstParam = false;
-//                    } else {
-//                        builder.append(AND);
-//                    }
-//
-//                    // Iterate over all values to create multiple values per
-//                    // parameter
-//                    String[] values = param.getValue();
-//                    Collection<String> paramValues = Arrays.asList(values);
-//                    Iterator<String> it = paramValues.iterator();
-//                    while (it.hasNext()) {
-//                        String value = it.next();
-//                        builder.append(name).append(EQ).append(value);
-//                        if (it.hasNext()) {
-//                            builder.append(AND);
-//                        }
-//                    }
-//                }
-//            }
-
             // Escape to HTML content
             return HtmlEscape.escapeHtml4Xml(builder.toString());
         } else if (sdUrl != null) {
@@ -218,7 +195,16 @@ public final class PageUtils {
     private static String getParamPrefix(final ITemplateContext context) {
         final String prefix = (String) context.getVariable(Keys.PAGINATION_QUALIFIER_PREFIX);
 
-        return prefix == null ? EMPTY : prefix.concat("_");
+        return prefix == null ? EMPTY : prefix.concat(Parameters.PREFIX_SEPARATOR);
     }
+
+	public static String getFilterValue(final ITemplateContext context) {
+        String filterValue = null;
+        if (context instanceof IWebContext) {
+            HttpServletRequest request = ((IWebContext) context).getRequest();
+            filterValue = request.getParameter(Parameters.FILTER);
+        }
+		return filterValue == null? "":filterValue;
+	}
 
 }
