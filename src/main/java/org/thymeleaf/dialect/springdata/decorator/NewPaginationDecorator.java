@@ -15,7 +15,7 @@ import org.thymeleaf.model.IProcessableElementTag;
 public class NewPaginationDecorator implements PaginationDecorator {
     private static final String DEFAULT_CLASS = "pagination";
     private static final String BUNDLE_NAME = NewPaginationDecorator.class.getSimpleName();
-    private static final int DEFAULT_PAGE_SPLIT = 7;
+    private static final int MINIMUM_PAGE_SPLIT = 7;
 	private static final String GROUP_OF_PAGES = "0";
 
 	@Override
@@ -30,12 +30,12 @@ public class NewPaginationDecorator implements PaginationDecorator {
 
         int pageNumber = page.getNumber();
         int totalPages = page.getTotalPages();
-        int pageSplit = DEFAULT_PAGE_SPLIT;
+        int pageSplit = MINIMUM_PAGE_SPLIT;
         Object paramValue = context.getVariable(Keys.PAGINATION_SPLIT_KEY);
         if (paramValue != null) {
             pageSplit = (Integer) paramValue;
-            if (pageSplit < DEFAULT_PAGE_SPLIT) {
-            	pageSplit = DEFAULT_PAGE_SPLIT;
+            if (pageSplit < MINIMUM_PAGE_SPLIT) {
+            	pageSplit = MINIMUM_PAGE_SPLIT;
             }
         }
 
