@@ -76,15 +76,15 @@ public class Parameters {
 	private String getSort() {
 		StringBuilder orderBuilder = new StringBuilder();
 		for (Sort.Order order : sort.toList()) {
-			if (orderBuilder.length() > 0) {
-				// TODO sort using more than 1 column
-				break;
+			if (orderBuilder.length()>0) {
+				orderBuilder.append(Strings.AND);
 			}
+			orderBuilder.append(getPrefix()  + SORT + Strings.EQ);
 			orderBuilder.append(order.getProperty());
 			orderBuilder.append(Strings.COMMA);
 			orderBuilder.append(order.getDirection().name());
 		}
-		return getPrefix()  + SORT + Strings.EQ + orderBuilder.toString();
+		return orderBuilder.toString();
 	}
 	
 	private String getPrefix() {
